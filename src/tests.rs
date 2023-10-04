@@ -219,7 +219,9 @@ mod object {
             "pork": "prank",
             "frog": {"1": 1, "2": 2, "-2": -2, "three": "3"},
             "sing": -123,
-            "frank": ["Ford", "BMW", "Fiat",-213   ,     204, [], ["apple", 200,[-5]]]
+            "frank": ["Ford", "BMW", "Fiat",-213   ,     204, [], ["apple", 200,[-5]]],
+            "song": false,
+            "nothing": null
         }GREETINGS"#;
         let actual = ObjectParser().parse(test_string).unwrap();
         let expected = (
@@ -252,6 +254,8 @@ mod object {
                         ]),
                     ])
                 ),
+                pair!("song", ASTNode::Boolean(false)),
+                pair!("nothing", ASTNode::Null),
             ])),
         );
         assert_eq!(actual, expected);
@@ -285,5 +289,38 @@ mod object {
                 ])
             )])),
         );
+    }
+}
+
+#[cfg(test)]
+mod boolean {
+    use crate::*;
+
+    fn check(string: &str, value: bool) {
+        let actual = BooleanParser().parse(string).unwrap();
+        let expected = ("", Some(ASTNode::Boolean(value)));
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn parses_true() {
+        check("true", true);
+    }
+
+    #[test]
+    fn parses_false() {
+        check("false", false);
+    }
+}
+
+#[cfg(test)]
+mod null {
+    use crate::*;
+
+    #[test]
+    fn parses_null() {
+        let actual = NullParser().parse("null").unwrap();
+        let expected = ("", Some(ASTNode::Null));
+        assert_eq!(actual, expected);
     }
 }

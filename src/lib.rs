@@ -55,6 +55,8 @@ enum ASTNode<'i> {
     String(&'i str),
     Sequence(Vec<ASTNode<'i>>),
     Pair(Box<ASTNode<'i>>, Box<ASTNode<'i>>),
+    Boolean(bool),
+    Null,
 }
 
 type ErrorType = String;
@@ -222,13 +224,16 @@ impl Parser for ChoiceParser {
     }
 }
 
-struct CommaDelimitedSequenceParser<T: Parser>(T, &'static str, &'static str);
+struct DelimitedSequenceParser<T: Parser>(&'static str, T, &'static str, &'static str);
 
-impl<T: Parser> Parser for CommaDelimitedSequenceParser<T> {
+impl<T: Parser> Parser for DelimitedSequenceParser<T> {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        let CommaDelimitedSequenceParser(element_parser, start_literal, end_literal) = self;
-        let separator_parser =
-            sequence!(WhitespaceParser(), LiteralParser(","), WhitespaceParser());
+        let DelimitedSequenceParser(delimeter, element_parser, start_literal, end_literal) = self;
+        let separator_parser = sequence!(
+            WhitespaceParser(),
+            LiteralParser(delimeter),
+            WhitespaceParser()
+        );
         // Turns out the empty array is a whole separate production in the real grammar, so I can
         // feel OK doing this
         // I used a sequence instead of just a single literal to allow for whitespace
@@ -268,7 +273,8 @@ struct ArrayParser();
 
 impl Parser for ArrayParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        CommaDelimitedSequenceParser(
+        DelimitedSequenceParser(
+            ",",
             choice!(IntParser(), StringParser(), ArrayParser(), ObjectParser()),
             "[",
             "]",
@@ -303,6 +309,20 @@ impl Parser for KeyValueParser {
 struct ObjectParser();
 impl Parser for ObjectParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        CommaDelimitedSequenceParser(KeyValueParser(), "{", "}").parse(input)
+        DelimitedSequenceParser(",", KeyValueParser(), "{", "}").parse(input)
+    }
+}
+
+struct BooleanParser();
+impl Parser for BooleanParser {
+    fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
+        Err("UH OH!".to_string())
+    }
+}
+
+struct NullParser();
+impl Parser for NullParser {
+    fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
+        Err("UH OH!".to_string())
     }
 }
