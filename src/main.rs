@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 
+mod tests;
+
 use itertools::Itertools;
 use std::cmp::min;
 use std::collections::HashSet;
@@ -15,6 +17,7 @@ lazy_static! {
     static ref NUMBER_CHARACTERS: HashSet<char> = "1234567890".chars().collect();
 }
 
+#[macro_export]
 macro_rules! boxer {
     ($type: expr, $($thing:expr);+) => {
         $type(vec![
@@ -25,19 +28,28 @@ macro_rules! boxer {
     }
 }
 
+#[macro_export]
 macro_rules! choice {
     ($($thing:expr),+) => {
         boxer!(ChoiceParser, $($thing);+)
     }
 }
 
+#[macro_export]
 macro_rules! sequence {
     ($($thing:expr),+) => {
         boxer!(SequenceParser, $($thing);+)
     }
 }
 
-#[derive(Debug)]
+#[macro_export]
+macro_rules! pair {
+    ($left:literal, $right:expr) => {
+        ASTNode::Pair(Box::new(ASTNode::String($left)), Box::new($right))
+    };
+}
+
+#[derive(Debug, PartialEq, Eq)]
 enum ASTNode<'i> {
     Number(NumberType),
     String(&'i str),
@@ -48,27 +60,6 @@ enum ASTNode<'i> {
 type ErrorType = String;
 type ParseResult<'i> = Result<ParseOutput<'i>, ErrorType>;
 type ParseOutput<'i> = (&'i str, Option<ASTNode<'i>>);
-
-fn main() {
-    let test_string = "\"apple\":123,";
-    let test_string = "[\"apple\",123,567,\"beef\",[123,456,\"pants\"]]";
-    let test_string = r#"{
-            "pork": "prank",
-            "frog": {"1": 1, "2": 2, "-2": -2, "three": "3"},
-            "sing": -123,
-            "frank": ["Ford", "BMW", "Fiat",-213   ,     204, [], ["apple", 200,[-5]]]
-        }"#;
-    let test_string = r#"{"employees":[  
-    {"name":"Shyam", "email":"shyamjaiswal@gmail.com"},  
-    {"name":"Bob", "email":"bob32@gmail.com"},  
-    {"name":"Jai", "email":"jai87@gmail.com"}  
-]}"#;
-    let parser = choice!(ArrayParser(), ObjectParser());
-    match parser.parse(test_string) {
-        Ok((s, tree)) => println!("Rest of string is \"{}\", was {:?}", s, tree),
-        Err(s) => println!("Error! {}", s),
-    }
-}
 
 trait Parser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i>;
@@ -119,17 +110,17 @@ impl Parser for SequenceParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         let mut output = Vec::new();
         let whitespace_parser = Box::new(WhitespaceParser()) as Box<dyn Parser>;
-        let next_string: Result<&'i str, ErrorType> = self
-            .0
-            .iter()
-            .intersperse(&whitespace_parser)
-            .try_fold(input, |new_input, parser| {
-                let (next_string, node) = parser.parse(new_input)?;
-                if let Some(node) = node {
-                    output.push(node);
-                }
-                Ok(next_string)
-            });
+        let next_string: Result<&'i str, ErrorType> = Itertools::intersperse(
+            self.0.iter(),
+            &whitespace_parser,
+        )
+        .try_fold(input, |new_input, parser| {
+            let (next_string, node) = parser.parse(new_input)?;
+            if let Some(node) = node {
+                output.push(node);
+            }
+            Ok(next_string)
+        });
         Ok((next_string?, Some(ASTNode::Sequence(output))))
     }
 }
