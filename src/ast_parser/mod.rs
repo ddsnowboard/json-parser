@@ -1,12 +1,8 @@
-#[macro_use]
-extern crate lazy_static;
-
-mod tests;
-
 use itertools::Itertools;
 use std::cmp::min;
 use std::collections::HashSet;
 
+mod tests;
 type NumberType = i32;
 
 lazy_static! {
@@ -42,21 +38,22 @@ macro_rules! sequence {
     }
 }
 
-#[macro_export]
-macro_rules! pair {
-    ($left:literal, $right:expr) => {
-        ASTNode::Pair(Box::new(ASTNode::String($left)), Box::new($right))
-    };
-}
-
 #[derive(Debug, PartialEq, Eq)]
-enum ASTNode<'i> {
+pub enum ASTNode<'i> {
     Number(NumberType),
     String(&'i str),
     Sequence(Vec<ASTNode<'i>>),
     Pair(Box<ASTNode<'i>>, Box<ASTNode<'i>>),
     Boolean(bool),
     Null,
+}
+
+fn make_pair<'a>(key: &'a str, value: ASTNode<'a>) -> ASTNode<'a> {
+    ASTNode::Pair(Box::new(ASTNode::String(key)), Box::new(value))
+}
+
+fn prefix(s: &str, n: usize) -> &str {
+    &s[..min(s.len(), n)]
 }
 
 type ErrorType = String;
@@ -75,7 +72,7 @@ impl Parser for LiteralParser {
             input.strip_prefix(self.0).ok_or_else(|| {
                 format!(
                     "string \"{}\" did not start with \"{}\"",
-                    &input[..min(input.len(), 10)],
+                    prefix(input, 10),
                     self.0
                 )
             })?,
@@ -190,7 +187,7 @@ impl Parser for IntParser {
         } else {
             Err(format!(
                 "{} did not start with an integer literal",
-                &input[..min(10, input.len())]
+                prefix(input, 10)
             ))
         }
     }
@@ -218,7 +215,7 @@ impl Parser for ChoiceParser {
             .ok_or_else(|| {
                 format!(
                     "None of the options were satisfied at {}",
-                    &input[..min(input.len(), 10)]
+                    prefix(input, 10)
                 )
             })
     }
@@ -289,7 +286,14 @@ impl Parser for KeyValueParser {
         let (next_string, Some(ASTNode::Sequence(mut keyval))) = sequence!(
             StringParser(),
             LiteralParser(":"),
-            choice!(StringParser(), ArrayParser(), IntParser(), ObjectParser())
+            choice!(
+                StringParser(),
+                ArrayParser(),
+                IntParser(),
+                ObjectParser(),
+                BooleanParser(),
+                NullParser()
+            )
         )
         .parse(input)?
         else {
@@ -316,13 +320,26 @@ impl Parser for ObjectParser {
 struct BooleanParser();
 impl Parser for BooleanParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        Err("UH OH!".to_string())
+        if let Ok((next_string, _)) = LiteralParser("true").parse(input) {
+            Ok((next_string, Some(ASTNode::Boolean(true))))
+        } else if let Ok((next_string, _)) = LiteralParser("false").parse(input) {
+            Ok((next_string, Some(ASTNode::Boolean(false))))
+        } else {
+            Err(format!(
+                "{} was neither \"true\" nor \"false\"",
+                prefix(input, 10)
+            ))
+        }
     }
 }
 
 struct NullParser();
 impl Parser for NullParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        Err("UH OH!".to_string())
+        if let Ok((next_string, _)) = LiteralParser("null").parse(input) {
+            Ok((next_string, Some(ASTNode::Null)))
+        } else {
+            Err(format!("{} did not match \"null\"", prefix(input, 10)))
+        }
     }
 }

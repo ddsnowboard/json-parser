@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod numbers {
-    use crate::*;
+    use crate::ast_parser::*;
 
     #[test]
     fn parses_positive_number() {
@@ -33,7 +33,7 @@ mod numbers {
 
 #[cfg(test)]
 mod literals {
-    use crate::*;
+    use crate::ast_parser::*;
     fn check_passes(start_string: &str, end_string: &str, literal: &'static str) {
         let actual = LiteralParser(literal).parse(start_string).unwrap();
         let expected = (end_string, None);
@@ -60,7 +60,7 @@ mod literals {
 
 #[cfg(test)]
 mod option {
-    use crate::*;
+    use crate::ast_parser::*;
     fn check_matches(start_string: &str, end_string: &str, number: NumberType) {
         let actual = OptionParser(IntParser()).parse(start_string).unwrap();
         let expected = (end_string, Some(ASTNode::Number(number)));
@@ -88,7 +88,7 @@ mod option {
 
 #[cfg(test)]
 mod whitespace {
-    use crate::*;
+    use crate::ast_parser::*;
 
     fn check(start_string: &str, end_string: &str) {
         let actual = WhitespaceParser().parse(start_string).unwrap();
@@ -124,26 +124,21 @@ mod whitespace {
 
 #[cfg(test)]
 mod keyvalue {
-    use crate::*;
+    use crate::ast_parser::*;
 
     #[test]
     fn parses_a_pair() {
         let test_string = "\"apple\":123,";
         let actual = KeyValueParser().parse(test_string).unwrap();
-        let expected = (
-            ",",
-            Some(ASTNode::Pair(
-                Box::new(ASTNode::String("apple")),
-                Box::new(ASTNode::Number(123)),
-            )),
-        );
+        let expected = (",", Some(make_pair("apple", ASTNode::Number(123))));
         assert_eq!(actual, expected);
     }
 }
 
 #[cfg(test)]
 mod sequence {
-    use crate::*;
+    use crate::ast_parser::*;
+    use crate::{boxer, sequence};
 
     #[test]
     fn parses_a_pair() {
@@ -164,7 +159,7 @@ mod sequence {
 
 #[cfg(test)]
 mod array {
-    use crate::*;
+    use crate::ast_parser::*;
 
     #[test]
     fn parses_an_array() {
@@ -211,7 +206,7 @@ mod array {
 
 #[cfg(test)]
 mod object {
-    use crate::*;
+    use crate::ast_parser::*;
 
     #[test]
     fn parses_an_object_with_whitespace_and_objects() {
@@ -227,18 +222,18 @@ mod object {
         let expected = (
             "GREETINGS",
             Some(ASTNode::Sequence(vec![
-                pair!("pork", ASTNode::String("prank")),
-                pair!(
+                make_pair("pork", ASTNode::String("prank")),
+                make_pair(
                     "frog",
                     ASTNode::Sequence(vec![
-                        pair!("1", ASTNode::Number(1)),
-                        pair!("2", ASTNode::Number(2)),
-                        pair!("-2", ASTNode::Number(-2)),
-                        pair!("three", ASTNode::String("3")),
-                    ])
+                        make_pair("1", ASTNode::Number(1)),
+                        make_pair("2", ASTNode::Number(2)),
+                        make_pair("-2", ASTNode::Number(-2)),
+                        make_pair("three", ASTNode::String("3")),
+                    ]),
                 ),
-                pair!("sing", ASTNode::Number(-123)),
-                pair!(
+                make_pair("sing", ASTNode::Number(-123)),
+                make_pair(
                     "frank",
                     ASTNode::Sequence(vec![
                         ASTNode::String("Ford"),
@@ -250,12 +245,12 @@ mod object {
                         ASTNode::Sequence(vec![
                             ASTNode::String("apple"),
                             ASTNode::Number(200),
-                            ASTNode::Sequence(vec![ASTNode::Number(-5)])
+                            ASTNode::Sequence(vec![ASTNode::Number(-5)]),
                         ]),
-                    ])
+                    ]),
                 ),
-                pair!("song", ASTNode::Boolean(false)),
-                pair!("nothing", ASTNode::Null),
+                make_pair("song", ASTNode::Boolean(false)),
+                make_pair("nothing", ASTNode::Null),
             ])),
         );
         assert_eq!(actual, expected);
@@ -271,30 +266,31 @@ mod object {
         let actual = ObjectParser().parse(test_string).unwrap();
         let expected = (
             "",
-            Some(ASTNode::Sequence(vec![pair!(
+            Some(ASTNode::Sequence(vec![make_pair(
                 "employees",
                 ASTNode::Sequence(vec![
                     ASTNode::Sequence(vec![
-                        pair!("name", ASTNode::String("Shyam")),
-                        pair!("email", ASTNode::String("shyamjaiswal@gmail.com")),
+                        make_pair("name", ASTNode::String("Shyam")),
+                        make_pair("email", ASTNode::String("shyamjaiswal@gmail.com")),
                     ]),
                     ASTNode::Sequence(vec![
-                        pair!("name", ASTNode::String("Bob")),
-                        pair!("email", ASTNode::String("bob32@gmail.com")),
+                        make_pair("name", ASTNode::String("Bob")),
+                        make_pair("email", ASTNode::String("bob32@gmail.com")),
                     ]),
                     ASTNode::Sequence(vec![
-                        pair!("name", ASTNode::String("Jai")),
-                        pair!("email", ASTNode::String("jai87@gmail.com")),
+                        make_pair("name", ASTNode::String("Jai")),
+                        make_pair("email", ASTNode::String("jai87@gmail.com")),
                     ]),
-                ])
+                ]),
             )])),
         );
+        assert_eq!(actual, expected);
     }
 }
 
 #[cfg(test)]
 mod boolean {
-    use crate::*;
+    use crate::ast_parser::*;
 
     fn check(string: &str, value: bool) {
         let actual = BooleanParser().parse(string).unwrap();
@@ -315,7 +311,7 @@ mod boolean {
 
 #[cfg(test)]
 mod null {
-    use crate::*;
+    use crate::ast_parser::*;
 
     #[test]
     fn parses_null() {
