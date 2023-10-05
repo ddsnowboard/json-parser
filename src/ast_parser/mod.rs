@@ -1,9 +1,9 @@
+use crate::NumberType;
 use itertools::Itertools;
 use std::cmp::min;
 use std::collections::HashSet;
 
 mod tests;
-type NumberType = i32;
 
 lazy_static! {
     static ref STRING_CHARACTERS: HashSet<char> =
@@ -27,14 +27,14 @@ macro_rules! boxer {
 #[macro_export]
 macro_rules! choice {
     ($($thing:expr),+) => {
-        boxer!(ChoiceParser, $($thing);+)
+        boxer!($crate::ChoiceParser, $($thing);+)
     }
 }
 
 #[macro_export]
 macro_rules! sequence {
     ($($thing:expr),+) => {
-        boxer!(SequenceParser, $($thing);+)
+        boxer!($crate::SequenceParser, $($thing);+)
     }
 }
 
@@ -60,7 +60,7 @@ type ErrorType = String;
 type ParseResult<'i> = Result<ParseOutput<'i>, ErrorType>;
 type ParseOutput<'i> = (&'i str, Option<ASTNode<'i>>);
 
-trait Parser {
+pub trait Parser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i>;
 }
 
@@ -92,7 +92,7 @@ impl<T: Parser> Parser for OptionParser<T> {
     }
 }
 
-struct WhitespaceParser();
+pub struct WhitespaceParser();
 impl Parser for WhitespaceParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         OptionParser(RepeatParser(choice!(
@@ -103,7 +103,7 @@ impl Parser for WhitespaceParser {
     }
 }
 
-struct SequenceParser(Vec<Box<dyn Parser>>);
+pub struct SequenceParser(pub Vec<Box<dyn Parser>>);
 
 impl Parser for SequenceParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
@@ -124,7 +124,7 @@ impl Parser for SequenceParser {
     }
 }
 
-struct RepeatParser<T: Parser>(T);
+pub struct RepeatParser<T: Parser>(T);
 
 impl<T: Parser> Parser for RepeatParser<T> {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
@@ -147,7 +147,7 @@ impl<T: Parser> Parser for RepeatParser<T> {
     }
 }
 
-struct StringParser();
+pub struct StringParser();
 
 impl Parser for StringParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
@@ -159,7 +159,7 @@ impl Parser for StringParser {
     }
 }
 
-struct IntParser();
+pub struct IntParser();
 
 impl Parser for IntParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
@@ -204,7 +204,7 @@ fn parse_character_string<'a>(
     (&input[n_chars..], Some(ASTNode::String(&input[..n_chars])))
 }
 
-struct ChoiceParser(Vec<Box<dyn Parser>>);
+pub struct ChoiceParser(pub Vec<Box<dyn Parser>>);
 
 impl Parser for ChoiceParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
@@ -266,13 +266,20 @@ impl<T: Parser> Parser for DelimitedSequenceParser<T> {
     }
 }
 
-struct ArrayParser();
+pub struct ArrayParser();
 
 impl Parser for ArrayParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         DelimitedSequenceParser(
             ",",
-            choice!(IntParser(), StringParser(), ArrayParser(), ObjectParser()),
+            choice!(
+                BooleanParser(),
+                IntParser(),
+                StringParser(),
+                ArrayParser(),
+                ObjectParser(),
+                NullParser()
+            ),
             "[",
             "]",
         )
@@ -310,14 +317,14 @@ impl Parser for KeyValueParser {
     }
 }
 
-struct ObjectParser();
+pub struct ObjectParser();
 impl Parser for ObjectParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         DelimitedSequenceParser(",", KeyValueParser(), "{", "}").parse(input)
     }
 }
 
-struct BooleanParser();
+pub struct BooleanParser();
 impl Parser for BooleanParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         if let Ok((next_string, _)) = LiteralParser("true").parse(input) {
@@ -333,7 +340,7 @@ impl Parser for BooleanParser {
     }
 }
 
-struct NullParser();
+pub struct NullParser();
 impl Parser for NullParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         if let Ok((next_string, _)) = LiteralParser("null").parse(input) {
