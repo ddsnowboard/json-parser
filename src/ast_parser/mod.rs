@@ -43,6 +43,7 @@ pub enum ASTNode<'i> {
     Number(NumberType),
     String(&'i str),
     Sequence(Vec<ASTNode<'i>>),
+    Mapping(Vec<(ASTNode<'i>, ASTNode<'i>)>),
     Pair(Box<ASTNode<'i>>, Box<ASTNode<'i>>),
     Boolean(bool),
     Null,
@@ -320,7 +321,26 @@ impl Parser for KeyValueParser {
 pub struct ObjectParser();
 impl Parser for ObjectParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        DelimitedSequenceParser(",", KeyValueParser(), "{", "}").parse(input)
+        let (next_string, Some(ASTNode::Sequence(items))) =
+            DelimitedSequenceParser(",", KeyValueParser(), "{", "}").parse(input)?
+        else {
+            panic!("DelimitedSequenceParser did not return a node");
+        };
+        Ok((
+            next_string,
+            Some(ASTNode::Mapping(
+                items
+                    .into_iter()
+                    .map(|node| {
+                        if let ASTNode::Pair(key, value) = node {
+                            (*key, *value)
+                        } else {
+                            panic!("KeyValueParser did not return a vec of Pairs")
+                        }
+                    })
+                    .collect(),
+            )),
+        ))
     }
 }
 

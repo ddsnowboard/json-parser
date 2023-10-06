@@ -39,30 +39,24 @@ fn convert(node: &ASTNode) -> Result<JSONElement, String> {
         ASTNode::String(s) => Ok(JSONElement::String(s.to_string())),
         ASTNode::Boolean(b) => Ok(JSONElement::Boolean(*b)),
         ASTNode::Pair(_, _) => Err("Can't have top-level pair".to_string()),
-        ASTNode::Sequence(items) => {
-            if let Some(pairs) = items
+        ASTNode::Sequence(items) => Ok(JSONElement::Array(
+            items
                 .iter()
-                .map(|item| {
-                    if let ASTNode::Pair(box_of_key, value) = item {
-                        let ASTNode::String(key) = **box_of_key else {
-                            return None;
-                        };
-                        Some((key.to_string(), convert(value).ok()?))
+                .map(|item| convert(item))
+                .collect::<Result<Vec<_>, String>>()?,
+        )),
+        ASTNode::Mapping(pairs) => {
+            let keyvals: Result<HashMap<String, JSONElement>, String> = pairs
+                .iter()
+                .map(|(key, value)| {
+                    if let ASTNode::String(s) = key {
+                        Ok((s.to_string(), convert(value)?))
                     } else {
-                        None
+                        Err(format!("Key {:?} was not a string", key))
                     }
                 })
-                .collect::<Option<Vec<(String, JSONElement)>>>()
-            {
-                Ok(JSONElement::Object(pairs.into_iter().collect()))
-            } else {
-                Ok(JSONElement::Array(
-                    items
-                        .iter()
-                        .map(|item| convert(item))
-                        .collect::<Result<Vec<_>, String>>()?,
-                ))
-            }
+                .collect();
+            keyvals.map(JSONElement::Object)
         }
         ASTNode::Null => Ok(JSONElement::Null),
     }

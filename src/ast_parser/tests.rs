@@ -29,6 +29,13 @@ mod numbers {
             panic!("Should have returned Err");
         };
     }
+
+    #[test]
+    fn parses_math() {
+        let actual = IntParser().parse("(200 * (55+11) - 4^2)^2").unwrap();
+        let expected = ("", Some(ASTNode::Number(173817856)));
+        assert_eq!(actual, expected);
+    }
 }
 
 #[cfg(test)]
@@ -221,20 +228,20 @@ mod object {
         let actual = ObjectParser().parse(test_string).unwrap();
         let expected = (
             "GREETINGS",
-            Some(ASTNode::Sequence(vec![
-                make_pair("pork", ASTNode::String("prank")),
-                make_pair(
-                    "frog",
-                    ASTNode::Sequence(vec![
-                        make_pair("1", ASTNode::Number(1)),
-                        make_pair("2", ASTNode::Number(2)),
-                        make_pair("-2", ASTNode::Number(-2)),
-                        make_pair("three", ASTNode::String("3")),
+            Some(ASTNode::Mapping(vec![
+                (ASTNode::String("pork"), ASTNode::String("prank")),
+                (
+                    ASTNode::String("frog"),
+                    ASTNode::Mapping(vec![
+                        (ASTNode::String("1"), ASTNode::Number(1)),
+                        (ASTNode::String("2"), ASTNode::Number(2)),
+                        (ASTNode::String("-2"), ASTNode::Number(-2)),
+                        (ASTNode::String("three"), ASTNode::String("3")),
                     ]),
                 ),
-                make_pair("sing", ASTNode::Number(-123)),
-                make_pair(
-                    "frank",
+                (ASTNode::String("sing"), ASTNode::Number(-123)),
+                (
+                    ASTNode::String("frank"),
                     ASTNode::Sequence(vec![
                         ASTNode::String("Ford"),
                         ASTNode::String("BMW"),
@@ -249,8 +256,8 @@ mod object {
                         ]),
                     ]),
                 ),
-                make_pair("song", ASTNode::Boolean(false)),
-                make_pair("nothing", ASTNode::Null),
+                (ASTNode::String("song"), ASTNode::Boolean(false)),
+                (ASTNode::String("nothing"), ASTNode::Null),
             ])),
         );
         assert_eq!(actual, expected);
@@ -266,20 +273,23 @@ mod object {
         let actual = ObjectParser().parse(test_string).unwrap();
         let expected = (
             "",
-            Some(ASTNode::Sequence(vec![make_pair(
-                "employees",
+            Some(ASTNode::Mapping(vec![(
+                ASTNode::String("employees"),
                 ASTNode::Sequence(vec![
-                    ASTNode::Sequence(vec![
-                        make_pair("name", ASTNode::String("Shyam")),
-                        make_pair("email", ASTNode::String("shyamjaiswal@gmail.com")),
+                    ASTNode::Mapping(vec![
+                        (ASTNode::String("name"), ASTNode::String("Shyam")),
+                        (
+                            ASTNode::String("email"),
+                            ASTNode::String("shyamjaiswal@gmail.com"),
+                        ),
                     ]),
-                    ASTNode::Sequence(vec![
-                        make_pair("name", ASTNode::String("Bob")),
-                        make_pair("email", ASTNode::String("bob32@gmail.com")),
+                    ASTNode::Mapping(vec![
+                        (ASTNode::String("name"), ASTNode::String("Bob")),
+                        (ASTNode::String("email"), ASTNode::String("bob32@gmail.com")),
                     ]),
-                    ASTNode::Sequence(vec![
-                        make_pair("name", ASTNode::String("Jai")),
-                        make_pair("email", ASTNode::String("jai87@gmail.com")),
+                    ASTNode::Mapping(vec![
+                        (ASTNode::String("name"), ASTNode::String("Jai")),
+                        (ASTNode::String("email"), ASTNode::String("jai87@gmail.com")),
                     ]),
                 ]),
             )])),
