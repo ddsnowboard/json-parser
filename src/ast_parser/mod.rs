@@ -3,7 +3,9 @@ use itertools::Itertools;
 use std::cmp::min;
 use std::collections::HashSet;
 
+mod math;
 mod tests;
+pub use crate::ast_parser::math::IntParser;
 
 lazy_static! {
     static ref STRING_CHARACTERS: HashSet<char> =
@@ -157,40 +159,6 @@ impl Parser for StringParser {
         let (string_end, node) = parse_character_string(string_start, &STRING_CHARACTERS);
         let (after_delimeter, _) = delimeter_parser.parse(string_end)?;
         Ok((after_delimeter, node))
-    }
-}
-
-pub struct IntParser();
-
-impl Parser for IntParser {
-    fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        let (sign, numeral_start) = {
-            let (string_start, _) = OptionParser(LiteralParser("-")).parse(input)?;
-            // If we didn't move forward, then these will be equal and there was no negative sign
-            (string_start == input, string_start)
-        };
-
-        let (next_string, Some(ASTNode::String(number))) =
-            parse_character_string(numeral_start, &NUMBER_CHARACTERS)
-        else {
-            panic!("parse_character_string returned something other than a ASTNode::String!");
-        };
-        if !number.is_empty() {
-            Ok((
-                next_string,
-                Some(ASTNode::Number(
-                    number
-                        .parse::<NumberType>()
-                        .map_err(|err| format!("{}", err))?
-                        * (if !sign { -1 } else { 1 }),
-                )),
-            ))
-        } else {
-            Err(format!(
-                "{} did not start with an integer literal",
-                prefix(input, 10)
-            ))
-        }
     }
 }
 
