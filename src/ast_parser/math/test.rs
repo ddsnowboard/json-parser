@@ -35,3 +35,25 @@ fn expo_gets_parenthesized_exponent() {
     let expected = ("", Some(ASTNode::Number(32)));
     assert_eq!(actual, expected);
 }
+
+#[test]
+fn expo_gets_stacked_exponent() {
+    let actual = ExponentParser().parse("(2)^3^2").unwrap();
+    let expected = ("", Some(ASTNode::Number(64)));
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn multiplies_and_divides() {
+    let cases: &[(&'static str, NumberType)] = &[
+        // ("5", 5),
+        // ("5 * 3", 15),
+        // ("5 * 4 * 2", 40),
+        ("20 / 10 * 5", 10),
+    ];
+    for (s, expected) in cases {
+        let actual = MultiplyDivideParser().parse(s).unwrap();
+        let expected = ("", Some(ASTNode::Number(*expected)));
+        assert_eq!(actual, expected);
+    }
+}
