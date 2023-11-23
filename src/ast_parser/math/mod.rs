@@ -1,7 +1,6 @@
 use crate::ast_parser::*;
 use crate::NumberType;
 use crate::{boxer, choice, sequence};
-use std::cmp::min;
 
 mod test;
 
@@ -116,35 +115,64 @@ struct MultiplyDivideParser();
 impl MultiplyDivideParser {
     fn try_with_delimeter<'i>(
         input: &'i str,
-        delimeter: &'static str,
-    ) -> Option<(&'i str, NumberType, NumberType)> {
-        let (next_string, Some(ASTNode::Sequence(mut exprs))) = sequence!(
-            ExponentParser(),
-            LiteralParser(delimeter),
-            MultiplyDivideParser()
-        )
+        delimeter: Option<&'static str>,
+    ) -> Option<(&'i str, NumberType)> {
+        let (next_string, Some(ASTNode::Sequence(mut exprs))) = match delimeter {
+            Some(delimeter) => sequence!(LiteralParser(delimeter), ExponentParser()),
+            None => sequence!(ExponentParser()),
+        }
         .parse(input)
         .ok()?
         else {
             panic!("Sequence did not return sequence");
         };
-        let Some(ASTNode::Number(right)) = exprs.pop() else {
+        let Some(ASTNode::Number(number)) = exprs.pop() else {
             panic!("MultiplyDivideParser did not return a number")
         };
-        let Some(ASTNode::Number(left)) = exprs.pop() else {
-            panic!("MultiplyDivideParser did not return a number")
-        };
-        Some((next_string, left, right))
+        Some((next_string, number))
     }
 }
+
 impl Parser for MultiplyDivideParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        if let Some((next_string, left, right)) = Self::try_with_delimeter(input, "*") {
-            Ok((next_string, Some(ASTNode::Number(left * right))))
-        } else if let Some((next_string, left, right)) = Self::try_with_delimeter(input, "/") {
-            Ok((next_string, Some(ASTNode::Number(left / right))))
+        enum Operation {
+            Start(NumberType),
+            Multiply(NumberType),
+            Divide(NumberType),
+        }
+
+        let mut operations = vec![];
+        let mut next_token = input;
+        loop {
+            if let Some((next_string, number)) = Self::try_with_delimeter(next_token, None) {
+                next_token = next_string;
+                operations.push(Operation::Start(number));
+            } else if let Some((next_string, number)) =
+                Self::try_with_delimeter(next_token, Some("*"))
+            {
+                next_token = next_string;
+                operations.push(Operation::Multiply(number));
+            } else if let Some((next_string, number)) =
+                Self::try_with_delimeter(next_token, Some("/"))
+            {
+                next_token = next_string;
+                operations.push(Operation::Divide(number));
+            } else {
+                break;
+            }
+        }
+        if !operations.is_empty() {
+            let output_number = operations.into_iter().fold(1, |acc, op| match op {
+                Operation::Start(n) => n,
+                Operation::Multiply(n) => n * acc,
+                Operation::Divide(n) => acc / n,
+            });
+            Ok((next_token, Some(ASTNode::Number(output_number))))
         } else {
-            ExponentParser().parse(input)
+            Err(format!(
+                "string \"{}\" did not start with an exponential expression",
+                prefix(input, 10)
+            ))
         }
     }
 }
@@ -153,13 +181,5 @@ pub struct IntParser();
 impl Parser for IntParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         IntLiteralParser().parse(input)
-    }
-}
-
-fn unpack_number(node: ASTNode) -> NumberType {
-    if let ASTNode::Number(n) = node {
-        n
-    } else {
-        panic!("Got a {:?} instead of a Number", node);
     }
 }
