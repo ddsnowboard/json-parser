@@ -1,3 +1,4 @@
+use crate::ast_parser::math::infix::MultiplyDivideParser;
 #[cfg(test)]
 use crate::ast_parser::math::*;
 

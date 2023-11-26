@@ -2,6 +2,7 @@ use crate::ast_parser::*;
 use crate::NumberType;
 use crate::{boxer, choice, sequence};
 
+mod infix;
 mod test;
 
 struct IntLiteralParser();
@@ -108,72 +109,6 @@ impl Parser for ExponentParser {
             _ => panic!("List should be 1 or 2 long!"),
         };
         Ok((output_string, Some(output_node)))
-    }
-}
-
-struct MultiplyDivideParser();
-impl MultiplyDivideParser {
-    fn try_with_delimeter<'i>(
-        input: &'i str,
-        delimeter: Option<&'static str>,
-    ) -> Option<(&'i str, NumberType)> {
-        let (next_string, Some(ASTNode::Sequence(mut exprs))) = match delimeter {
-            Some(delimeter) => sequence!(LiteralParser(delimeter), ExponentParser()),
-            None => sequence!(ExponentParser()),
-        }
-        .parse(input)
-        .ok()?
-        else {
-            panic!("Sequence did not return sequence");
-        };
-        let Some(ASTNode::Number(number)) = exprs.pop() else {
-            panic!("MultiplyDivideParser did not return a number")
-        };
-        Some((next_string, number))
-    }
-}
-
-impl Parser for MultiplyDivideParser {
-    fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        enum Operation {
-            Start(NumberType),
-            Multiply(NumberType),
-            Divide(NumberType),
-        }
-
-        let mut operations = vec![];
-        let mut next_token = input;
-        loop {
-            if let Some((next_string, number)) = Self::try_with_delimeter(next_token, None) {
-                next_token = next_string;
-                operations.push(Operation::Start(number));
-            } else if let Some((next_string, number)) =
-                Self::try_with_delimeter(next_token, Some("*"))
-            {
-                next_token = next_string;
-                operations.push(Operation::Multiply(number));
-            } else if let Some((next_string, number)) =
-                Self::try_with_delimeter(next_token, Some("/"))
-            {
-                next_token = next_string;
-                operations.push(Operation::Divide(number));
-            } else {
-                break;
-            }
-        }
-        if !operations.is_empty() {
-            let output_number = operations.into_iter().fold(1, |acc, op| match op {
-                Operation::Start(n) => n,
-                Operation::Multiply(n) => n * acc,
-                Operation::Divide(n) => acc / n,
-            });
-            Ok((next_token, Some(ASTNode::Number(output_number))))
-        } else {
-            Err(format!(
-                "string \"{}\" did not start with an exponential expression",
-                prefix(input, 10)
-            ))
-        }
     }
 }
 
