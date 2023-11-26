@@ -46,9 +46,9 @@ fn expo_gets_stacked_exponent() {
 #[test]
 fn multiplies_and_divides() {
     let cases: &[(&'static str, NumberType)] = &[
-        // ("5", 5),
-        // ("5 * 3", 15),
-        // ("5 * 4 * 2", 40),
+        ("5", 5),
+        ("5 * 3", 15),
+        ("5 * 4 * 2", 40),
         ("20 / 10 * 5", 10),
     ];
     for (s, expected) in cases {
