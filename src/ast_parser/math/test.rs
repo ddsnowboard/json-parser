@@ -1,4 +1,4 @@
-use crate::ast_parser::math::infix::MultiplyDivideParser;
+use crate::ast_parser::math::infix::{AddSubtractParser, MultiplyDivideParser};
 #[cfg(test)]
 use crate::ast_parser::math::*;
 
@@ -57,4 +57,43 @@ fn multiplies_and_divides() {
         let expected = ("", Some(ASTNode::Number(*expected)));
         assert_eq!(actual, expected);
     }
+}
+
+#[test]
+fn adds_and_subtracts() {
+    let cases: &[(&'static str, NumberType)] = &[
+        ("5", 5),
+        ("5 + 3", 8),
+        ("5-3", 2),
+        ("5 + 4 - 11", -2),
+        ("-5 + 20", 15),
+    ];
+    for (s, expected) in cases {
+        let actual = AddSubtractParser().parse(s).unwrap();
+        let expected = ("", Some(ASTNode::Number(*expected)));
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn adds_and_subtracts_with_complex_expressions() {
+    let cases: &[(&'static str, NumberType)] = &[("5 - 2^5", -27), ("5 + 3*2", 11), ("5*2-3*2", 4)];
+    for (s, expected) in cases {
+        let actual = AddSubtractParser().parse(s).unwrap();
+        let expected = ("", Some(ASTNode::Number(*expected)));
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn adds_and_subtracts_a_lot() {
+    let input_string = "-5 + 20";
+    let output = 15;
+    (1..200).for_each(|_| {
+        // There's a bit of randomness in how the HashMap is arranged, and this test would have
+        // caught a bug when we were using it
+        let actual = AddSubtractParser().parse(input_string).unwrap();
+        let expected = ("", Some(ASTNode::Number(output)));
+        assert_eq!(actual, expected);
+    })
 }
