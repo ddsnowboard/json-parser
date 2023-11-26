@@ -5,15 +5,18 @@ use crate::{boxer, sequence};
 
 pub struct MultiplyDivideParser();
 
+// The delimeter and a function returning the appropriate Operation enum for that delimeter
+type OperationMapping<O> = (&'static str, fn(NumberType) -> O);
+
 impl Parser for MultiplyDivideParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        let operation_mapping: Vec<(Option<&'static str>, fn(i32) -> MultiplyDivideOperation)> = vec![
+        let operation_mapping: Vec<OperationMapping<MultiplyDivideOperation>> = vec![
             (
-                Some("*"),
+                "*",
                 MultiplyDivideOperation::Multiply as fn(i32) -> MultiplyDivideOperation,
             ),
             (
-                Some("/"),
+                "/",
                 MultiplyDivideOperation::Divide as fn(i32) -> MultiplyDivideOperation,
             ),
         ];
@@ -28,14 +31,14 @@ impl Parser for MultiplyDivideParser {
 pub struct AddSubtractParser();
 impl Parser for AddSubtractParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        let operation_mapping: Vec<(Option<&'static str>, fn(i32) -> AddSubtractOperation)> = vec![
+        let operation_mapping: Vec<OperationMapping<AddSubtractOperation>> = vec![
             (
-                Some("+"),
-                AddSubtractOperation::Add as fn(i32) -> AddSubtractOperation,
+                "+",
+                AddSubtractOperation::Add as fn(NumberType) -> AddSubtractOperation,
             ),
             (
-                Some("-"),
-                AddSubtractOperation::Subtract as fn(i32) -> AddSubtractOperation,
+                "-",
+                AddSubtractOperation::Subtract as fn(NumberType) -> AddSubtractOperation,
             ),
         ];
         parse_infix_expression::<AddSubtractOperation, MultiplyDivideParser>(
@@ -98,11 +101,11 @@ impl Operation for AddSubtractOperation {
     }
 }
 
-fn parse_infix_expression<'i, O: Operation, P: Parser + 'static>(
-    operation_mapping: Vec<(Option<&'static str>, fn(i32) -> O)>,
-    input: &'i str,
+fn parse_infix_expression<O: Operation, P: Parser + 'static>(
+    operation_mapping: Vec<OperationMapping<O>>,
+    input: &str,
     get_component_parser: fn() -> P,
-) -> ParseResult<'i> {
+) -> ParseResult<'_> {
     let mut operations = vec![];
 
     let (mut next_token, start_number) = try_with_delimeter(input, None, get_component_parser)
@@ -113,7 +116,7 @@ fn parse_infix_expression<'i, O: Operation, P: Parser + 'static>(
     'token_walker: loop {
         for (delimeter, operation) in operation_mapping.iter() {
             if let Some((next_string, number)) =
-                try_with_delimeter(next_token, *delimeter, get_component_parser)
+                try_with_delimeter(next_token, Some(delimeter), get_component_parser)
             {
                 next_token = next_string;
                 operations.push(operation(number));

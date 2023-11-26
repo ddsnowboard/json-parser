@@ -1,8 +1,9 @@
+use crate::ast_parser::math::infix::AddSubtractParser;
 use crate::ast_parser::*;
 use crate::NumberType;
 use crate::{boxer, choice, sequence};
 
-mod infix;
+pub mod infix;
 mod test;
 
 struct IntLiteralParser();
@@ -42,11 +43,9 @@ impl Parser for IntLiteralParser {
 struct ParenthesizedExpressionParser();
 impl Parser for ParenthesizedExpressionParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
-        let (output_string, node) = choice!(
-            IntLiteralParser(),
-            sequence!(LiteralParser("("), IntParser(), LiteralParser(")"))
-        )
-        .parse(input)?;
+        let (output_string, node) =
+            sequence!(LiteralParser("("), AddSubtractParser(), LiteralParser(")")).parse(input)?;
+
         let output_node = match node {
             number @ Some(ASTNode::Number(_)) => number,
             Some(ASTNode::Sequence(mut list)) => {
@@ -66,10 +65,10 @@ struct ExponentParser();
 impl Parser for ExponentParser {
     fn parse<'i>(&self, input: &'i str) -> ParseResult<'i> {
         let (output_string, node) = sequence!(
-            ParenthesizedExpressionParser(),
+            choice!(IntParser(), ParenthesizedExpressionParser()),
             RepeatParser(sequence!(
                 LiteralParser("^"),
-                ParenthesizedExpressionParser()
+                choice!(IntParser(), ParenthesizedExpressionParser())
             ))
         )
         .parse(input)?;

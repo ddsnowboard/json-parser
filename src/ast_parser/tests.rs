@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod numbers {
+    use crate::ast_parser::math::infix::AddSubtractParser;
     use crate::ast_parser::*;
 
     #[test]
@@ -32,7 +33,9 @@ mod numbers {
 
     #[test]
     fn parses_math() {
-        let actual = IntParser().parse("(200 * (55+11) - 4^2)^2").unwrap();
+        let actual = AddSubtractParser()
+            .parse("(200 * (55+11) - 4^2)^2")
+            .unwrap();
         let expected = ("", Some(ASTNode::Number(173817856)));
         assert_eq!(actual, expected);
     }

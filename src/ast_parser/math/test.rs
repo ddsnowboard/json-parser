@@ -3,17 +3,13 @@ use crate::ast_parser::math::infix::{AddSubtractParser, MultiplyDivideParser};
 use crate::ast_parser::math::*;
 
 #[test]
-fn paren_gets_literal() {
-    let actual = ParenthesizedExpressionParser().parse("55a").unwrap();
-    let expected = ("a", Some(ASTNode::Number(55)));
-    assert_eq!(actual, expected);
+fn paren_does_not_get_literal() {
+    assert!(ParenthesizedExpressionParser().parse("55").is_err());
 }
 
 #[test]
 fn paren_gets_negative_literal() {
-    let actual = ParenthesizedExpressionParser().parse("-55a").unwrap();
-    let expected = ("a", Some(ASTNode::Number(-55)));
-    assert_eq!(actual, expected);
+    assert!(ParenthesizedExpressionParser().parse("-55").is_err());
 }
 
 #[test]
